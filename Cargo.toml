@@ -17,3 +17,4 @@ clipboard-anywhere = "0.2"
 config = "0.13"
 lazy_static = "1.4"
 iced = { version = "0.10" ,features = ["image","debug"]}
+rfd = "0.12.1"

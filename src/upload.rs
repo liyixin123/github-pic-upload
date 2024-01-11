@@ -10,11 +10,10 @@ use serde::{Deserialize, Serialize};
 use std::{sync::RwLock};
 use std::path::PathBuf;
 use std::io::Read;
-
 lazy_static! {
     static ref SETTINGS: RwLock<Config> = RwLock::new(
         Config::builder()
-            .add_source(File::new("settings", FileFormat::Toml))
+            .add_source(File::new("./settings", FileFormat::Toml))
             .build()
             .unwrap()
     );

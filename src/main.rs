@@ -3,7 +3,8 @@ mod upload;
 use std::path::PathBuf;
 use std::option::Option;
 use iced::{executor, Command, Element, Settings, Theme, Alignment, Application, Length, Subscription};
-use iced::widget::{column,  text, container, Text};
+use iced::widget::{column, text, container, Text,  Button};
+use rfd::FileDialog;
 
 
 pub fn main() -> iced::Result {
@@ -14,6 +15,7 @@ pub fn main() -> iced::Result {
 enum Message {
     DraggedImage(iced::Event),
     ImageDropped(Option<PathBuf>),
+    OpenImgPressed,
     OtherEvent(iced::Event),
 }
 
@@ -59,7 +61,19 @@ impl Application for MyApp {
                 println!("dragged Image");
                 Command::perform(handle_dragged_image(event), Message::ImageDropped)
             }
-            _ => { Command::none() }
+            Message::OpenImgPressed => {
+                Command::perform(
+                    async move {
+                        FileDialog::new()
+                            .set_title("选择一张图片")
+                            .add_filter("image", &["png", "jpg"])
+                            .set_directory("/")
+                            .pick_file()
+                    },
+                    Message::ImageDropped,
+                )
+            }
+            Message::OtherEvent(_) => { Command::none() }
         }
     }
     fn view(&self) -> Element<Message> {
@@ -73,7 +87,14 @@ impl Application for MyApp {
         } else {
             text("Drop an image here")
         };
+        let btn_open_image = Button::new(text("Upload Image")
+            .horizontal_alignment(iced::alignment::Horizontal::Center)
+            .vertical_alignment(iced::alignment::Vertical::Center)
+            .size(15)
+        ).on_press(Message::OpenImgPressed);
+
         let content = column![
+            btn_open_image,
             _label,
             _path_text,
         ]
