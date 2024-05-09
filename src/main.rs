@@ -22,8 +22,7 @@ pub fn main() -> iced::Result {
 
 #[derive(Debug, Clone)]
 enum Message {
-    DraggedImage(iced::Event),
-    ImageDropped(Option<PathBuf>),
+    FileDropped(Option<PathBuf>),
     OpenImgPressed,
     OnSelectOption(BaseOption),
 
@@ -58,6 +57,12 @@ impl BaseOption {
             BaseOption::FileMD5 => { "计算文件 md5，并生成文件，同时写入剪贴板" }
         }
     }
+    fn button_txt(&self) -> &str {
+        match self {
+            BaseOption::PicUpload => { "Upload Image" }
+            BaseOption::FileMD5 => { "Select File" }
+        }
+    }
 }
 
 struct MyApp {
@@ -65,6 +70,68 @@ struct MyApp {
     image_path: Option<PathBuf>,
     selected_option: Option<BaseOption>,
     option_hint: String,
+    button_txt: String,
+}
+
+fn is_image(path: &PathBuf) -> bool {
+    match path.extension() {
+        Some(ext) => {
+            let ext = ext.to_string_lossy().to_lowercase();
+            ext == "jpg" || ext == "jpeg" || ext == "png" || ext == "gif" || ext == "bmp"
+        }
+        None => false,
+    }
+}
+
+impl MyApp {
+    fn process_path(&mut self, path: Option<PathBuf>) {
+        if let Some(path) = &path {
+            if let Some(option) = &self.selected_option {
+                match option {
+                    BaseOption::PicUpload => {
+                        if is_image(&path) {
+                            self.image_path = Some(PathBuf::from(path));
+                            self.return_path = Some("Uploading ... ".to_string());
+                            match upload::upload_file_path(&path) {
+                                Ok(url) => self.return_path = Some(url),
+                                Err(err) => self.return_path = Some(err.to_string()),
+                            }
+                        } else {
+                            self.return_path = Some(format!("Not a image file: {:?}", path));
+                        }
+                    }
+                    BaseOption::FileMD5 => {
+                        let md5 = Self::calculate_md5(&path).unwrap();
+                        self.return_path = Some(format!("MD5: {}", md5));
+                    }
+                }
+            }
+        }
+    }
+
+    fn calculate_md5(file_path: &PathBuf) -> Option<String> {
+        use std::fs::File;
+        use std::io::Read;
+
+        let mut file = File::open(file_path).ok()?;
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer).ok()?;
+
+        let digest = md5::compute(&buffer);
+        let str = format!("{:x}", digest);
+        // 获取原始文件名并添加_md5.txt后缀
+        let file_name = file_path.file_name().unwrap().to_str().unwrap();
+        let new_file_name = format!("{}_md5.txt", file_name);
+
+        // 生成新文件路径，直接添加新后缀
+        let new_file_path = file_path.with_file_name(new_file_name);
+
+        // 将MD5写入剪贴板
+        let _ = clipboard_anywhere::set_clipboard(str.as_str());
+        // 保存MD5摘要到新文件
+        std::fs::write(&new_file_path, &str).unwrap();
+        Some(str)
+    }
 }
 
 impl Application for MyApp {
@@ -78,33 +145,24 @@ impl Application for MyApp {
             MyApp {
                 return_path: None,
                 image_path: None,
-                selected_option: None,
+                selected_option: Some(BaseOption::PicUpload),
                 option_hint: "".to_string(),
+                button_txt: "Select File".to_string(),
             },
             Command::none(),
         )
     }
 
     fn title(&self) -> String {
-        String::from("拖入图片，成功后直接粘贴即可")
+        String::from("文件MD5生成器 & 图片上传工具")
     }
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
-            Message::ImageDropped(path) => {
-                if let Some(path) = &path {
-                    self.image_path = Some(PathBuf::from(path));
-                    self.return_path = Some("Uploading ... ".to_string());
-                    match upload::upload_file_path(&path) {
-                        Ok(url) => self.return_path = Some(url),
-                        Err(err) => self.return_path = Some(err.to_string()),
-                    }
-                }
+            Message::FileDropped(path) => {
+                self.process_path(path);
                 Command::none()
             }
-            Message::DraggedImage(event) => {
-                println!("dragged Image");
-                Command::perform(handle_dragged_image(event), Message::ImageDropped)
-            }
+
             Message::OpenImgPressed => Command::perform(
                 async move {
                     FileDialog::new()
@@ -113,12 +171,13 @@ impl Application for MyApp {
                         .set_directory("/")
                         .pick_file()
                 },
-                Message::ImageDropped,
+                Message::FileDropped,
             ),
             Message::OtherEvent() => Command::none(),
             Message::OnSelectOption(option) => {
                 self.selected_option = Some(option);
                 self.option_hint = option.hint().to_string();
+                self.button_txt = option.button_txt().to_string();
                 Command::none()
             }
         }
@@ -146,7 +205,7 @@ impl Application for MyApp {
             iced::widget::Text::new(content).shaping(Advanced)
         };
         let _btn_open_image = Button::new(
-            iced::widget::text("Upload Image")
+            iced::widget::text(self.button_txt.as_str())
                 .horizontal_alignment(iced::alignment::Horizontal::Center)
                 .vertical_alignment(iced::alignment::Vertical::Center)
                 .size(15),
@@ -203,28 +262,18 @@ impl Application for MyApp {
             .into()
     }
 
-    fn subscription(&self) -> Subscription<Message> {
-        event::listen().map(|event| match event {
-            iced::Event::Window(iced::window::Id::MAIN, iced::window::Event::FileDropped(_)) => {
-                Message::DraggedImage(event)
-            }
-            _ => Message::OtherEvent(),
-        })
-        // Subscription::none()
-    }
-
     fn theme(&self) -> Self::Theme {
         Theme::Dracula
     }
-}
 
-//
-async fn handle_dragged_image(event: iced::Event) -> Option<PathBuf> {
-    if let iced::Event::Window(iced::window::Id::MAIN, iced::window::Event::FileDropped(file)) =
-        event
-    {
-        Some(file)
-    } else {
-        None
+    fn subscription(&self) -> Subscription<Message> {
+        event::listen().map(|event| match event {
+            iced::Event::Window(iced::window::Id::MAIN, iced::window::Event::FileDropped(stream)) => {
+                Message::FileDropped(Some(stream))
+            }
+            _ => Message::OtherEvent()
+        })
+        // Subscription::none()
     }
 }
+

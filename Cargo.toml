@@ -18,3 +18,4 @@ config = "0.13"
 lazy_static = "1.4"
 iced = { version = "0.12" ,features = ["image","debug","advanced"]}
 rfd = "0.12.1"
+md5 = "0.7"
