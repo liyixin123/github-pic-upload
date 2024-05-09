@@ -16,5 +16,5 @@ tempfile = "3.2"
 clipboard-anywhere = "0.2"
 config = "0.13"
 lazy_static = "1.4"
-iced = { version = "0.12" ,features = ["image","debug"]}
+iced = { version = "0.12" ,features = ["image","debug","advanced"]}
 rfd = "0.12.1"
