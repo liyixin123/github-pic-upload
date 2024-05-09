@@ -145,7 +145,7 @@ impl Application for MyApp {
             }
             iced::widget::Text::new(content).shaping(Advanced)
         };
-        let btn_open_image = Button::new(
+        let _btn_open_image = Button::new(
             iced::widget::text("Upload Image")
                 .horizontal_alignment(iced::alignment::Horizontal::Center)
                 .vertical_alignment(iced::alignment::Vertical::Center)
@@ -162,7 +162,7 @@ impl Application for MyApp {
         //     .width(250)
         //     .on_option_hovered(Message::OptionHovered);
 
-        let pick_list = pick_list(
+        let _pick_list = pick_list(
             &BaseOption::ALL[..],
             self.selected_option,
             Message::OnSelectOption,
@@ -171,14 +171,14 @@ impl Application for MyApp {
             .text_shaping(Advanced)
             .width(200);
 
-        let option_hint = iced::widget::Text::new(self.option_hint.clone())
+        let _option_hint = iced::widget::Text::new(self.option_hint.clone())
             .horizontal_alignment(iced::alignment::Horizontal::Center)
             .vertical_alignment(iced::alignment::Vertical::Center)
             .shaping(Advanced);
-        let row = row![
+        let _row = row![
             iced::widget::text("功能选项：").shaping(Advanced),
-            pick_list,
-            option_hint,
+            _pick_list,
+            _option_hint,
         ]
             .spacing(20)
             .width(Length::Fill)
@@ -186,9 +186,9 @@ impl Application for MyApp {
 
         let content = column![
             _label,
-            btn_open_image,
+            _btn_open_image,
             _path_text,
-            row,
+            _row,
         ]
             .width(Length::Fill)
             .align_items(Alignment::Center)
